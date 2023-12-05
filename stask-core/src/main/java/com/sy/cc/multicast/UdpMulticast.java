@@ -157,7 +157,7 @@ public class UdpMulticast {
                         .option(ChannelOption.SO_RCVBUF, 2048 * 1024)
                         .option(ChannelOption.SO_SNDBUF, 1024 * 1024)
                         .handler(new LoggingHandler(LogLevel.DEBUG))
-                        .handler(new UpdInitializer());
+                        .handler(new UpdInitializerEpoll());
 
                 // linux平台下支持SO_REUSEPORT特性以提高性能
 
