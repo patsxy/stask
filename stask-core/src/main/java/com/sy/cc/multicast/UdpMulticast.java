@@ -78,7 +78,8 @@ public class UdpMulticast {
     public static void buildMulticast() throws Exception {
         // 组播地址
         // 组播地址
-        boolean hasEpoll=false;
+        boolean hasEpoll = false;
+
         StaskServer configServer = ConfigBase.getStaskServer();
         if (configServer != null) {
             StaskInfo staskServer = configServer.getStaskServer();
@@ -92,8 +93,9 @@ public class UdpMulticast {
                 if (port != null) {
                     GROUPPORT = port;
                 }
-                if(staskServer.getHasEpoll()!=null){
-                    hasEpoll=staskServer.getHasEpoll();
+
+                if (staskServer.getHasEpoll() != null) {
+                    hasEpoll = staskServer.getHasEpoll();
                 }
             }
         }
@@ -105,6 +107,7 @@ public class UdpMulticast {
 
         try {
 //            NetworkInterface ni = NetworkInterface.getByInetAddress(InetAddress.getByName(localIp));
+
             Enumeration<NetworkInterface> niall = NetworkInterface.getNetworkInterfaces();
             // Enumeration<InetAddress> addresses = ni.getInetAddresses();
             NetworkInterface networkInterface = null;
@@ -115,64 +118,93 @@ public class UdpMulticast {
                 while (inetAddresses.hasMoreElements()) {
                     InetAddress address = inetAddresses.nextElement();
                     if (address instanceof Inet4Address) {
-                        localAddress = address;
-                        networkInterface = network;
-                        System.out.println("网络接口名称为：" + networkInterface.getName());
-                        System.out.println("网卡接口地址：" + address.getHostAddress());
+                        if (!address.getHostAddress().equals("127.0.0.1")) {
+                            localAddress = address;
+                            networkInterface = network;
+                        }
+                        logger.info("网络接口名称为：" + networkInterface.getName());
+                        logger.info("网卡接口地址：" + address.getHostAddress());
                     }
                 }
             }
 //
-
+            logger.info("当前地址：{}", localAddress.getHostAddress());
             logger.info("Epoll.isAvailable():{}", Epoll.isAvailable());
+            logger.info("hasEpoll:{}",hasEpoll);
             address = localAddress.getHostAddress();
+            if (Epoll.isAvailable() && hasEpoll) {
 
-            //表示服务器连接监听线程组，专门接受 accept 新的客户端client 连接
-            EventLoopGroup bossLoopGroup = Epoll.isAvailable() ? new EpollEventLoopGroup() : new NioEventLoopGroup();
+                //表示服务器连接监听线程组，专门接受 accept 新的客户端client 连接
+                EventLoopGroup bossLoopGroup = new EpollEventLoopGroup();
 
-            Bootstrap bootstrap = new Bootstrap();
-            bootstrap.group(bossLoopGroup)
-                    //设置NIO UDP连接通道
-                    .channel(Epoll.isAvailable() &&  hasEpoll ? EpollDatagramChannel.class : NioDatagramChannel.class)
+                Bootstrap bootstrap = new Bootstrap();
+                bootstrap.group(bossLoopGroup)
+                        //设置NIO UDP连接通道
+                        .channel(EpollDatagramChannel.class)
 //                    .channelFactory(new ChannelFactory<NioDatagramChannel>() {
 //                        @Override
 //                        public NioDatagramChannel newChannel() {
 //                            return new NioDatagramChannel(InternetProtocolFamily.IPv4);
 //                        }
 //                    })
-                    .localAddress(new InetSocketAddress(localAddress, 0))
-                    .option(ChannelOption.IP_MULTICAST_IF, networkInterface)
-                    .option(ChannelOption.IP_MULTICAST_ADDR, InetAddress.getByName(localAddress.getHostAddress()))
-                    .option(ChannelOption.SO_BROADCAST, true)
-                    .option(ChannelOption.SO_REUSEADDR, true)
-                    .option(ChannelOption.SO_RCVBUF, 2048 * 1024)
-                    .option(ChannelOption.SO_SNDBUF, 1024 * 1024)
-                    .handler(new LoggingHandler(LogLevel.DEBUG))
-                    .handler(new UpdInitializer());
 
-            // linux平台下支持SO_REUSEPORT特性以提高性能
-            if (Epoll.isAvailable()  && hasEpoll) {
+                        .localAddress(new InetSocketAddress(localAddress, 0))
+                        .option(ChannelOption.IP_MULTICAST_IF, networkInterface)
+                        .option(ChannelOption.IP_MULTICAST_ADDR, InetAddress.getByName(localAddress.getHostAddress()))
+                        .option(ChannelOption.SO_BROADCAST, true)
+                        .option(ChannelOption.SO_REUSEADDR, true)
+                        .option(ChannelOption.SO_RCVBUF, 2048 * 1024)
+                        .option(ChannelOption.SO_SNDBUF, 1024 * 1024)
+                        .handler(new LoggingHandler(LogLevel.DEBUG))
+                        .handler(new UpdInitializer());
+
+                // linux平台下支持SO_REUSEPORT特性以提高性能
+
                 logger.info("SO_REUSEPORT");
                 bootstrap.option(EpollChannelOption.SO_REUSEPORT, true);
                 // linux系统下使用SO_REUSEPORT特性，使得多个线程绑定同一个端口
                 int cpuNum = Runtime.getRuntime().availableProcessors();
                 logger.info("using epoll reuseport and cpu:" + cpuNum);
-                EpollDatagramChannel   epollChannel=null;
+                EpollDatagramChannel epollChannel = null;
                 for (int i = 0; i < cpuNum; i++) {
                     logger.info("worker-{} bind", i);
                     //6、绑定server，通过调用sync（）方法异步阻塞，直到绑定成功
-                    epollChannel  = (EpollDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
+                    epollChannel = (EpollDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
+
                 }
                 epollChannel.joinGroup(GROUPADDRESS, networkInterface).sync();
+
             } else {
+
+                //表示服务器连接监听线程组，专门接受 accept 新的客户端client 连接
+                EventLoopGroup bossLoopGroup = new NioEventLoopGroup();
+
+                Bootstrap bootstrap = new Bootstrap();
+                bootstrap.group(bossLoopGroup)
+                        //设置NIO UDP连接通道
+                        .channel(NioDatagramChannel.class)
+//                    .channelFactory(new ChannelFactory<NioDatagramChannel>() {
+//                        @Override
+//                        public NioDatagramChannel newChannel() {
+//                            return new NioDatagramChannel(InternetProtocolFamily.IPv4);
+//                        }
+//                    })
+                        .localAddress(new InetSocketAddress(localAddress, 0))
+                        .option(ChannelOption.IP_MULTICAST_IF, networkInterface)
+                        .option(ChannelOption.IP_MULTICAST_ADDR, InetAddress.getByName(localAddress.getHostAddress()))
+                        .option(ChannelOption.SO_BROADCAST, true)
+                        .option(ChannelOption.SO_REUSEADDR, true)
+                        .option(ChannelOption.SO_RCVBUF, 2048 * 1024)
+                        .option(ChannelOption.SO_SNDBUF, 1024 * 1024)
+                        .handler(new LoggingHandler(LogLevel.DEBUG))
+                        .handler(new UpdInitializer());
+
+
                 CHANNEL = (NioDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
                 CHANNEL.joinGroup(GROUPADDRESS, networkInterface).sync();
             }
 
-            //     CHANNEL.newSucceededFuture().sync();
-//            channel.writeAndFlush(MessageProtocol.getMessageProtocol("ddd"));
 
-            // CHANNEL.closeFuture().await();
         } catch (SocketException e) {
             throw new RuntimeException(e);
         } catch (UnknownHostException e) {
@@ -182,6 +214,7 @@ public class UdpMulticast {
         } finally {
             //   group.shutdownGracefully();
         }
+
 
 
     }
