@@ -133,7 +133,7 @@ public class UdpMulticast {
             Bootstrap bootstrap = new Bootstrap();
             bootstrap.group(bossLoopGroup)
                     //设置NIO UDP连接通道
-                    .channel(Epoll.isAvailable() ? EpollDatagramChannel.class : NioDatagramChannel.class)
+                    .channel(Epoll.isAvailable() &&  hasEpoll ? EpollDatagramChannel.class : NioDatagramChannel.class)
 //                    .channelFactory(new ChannelFactory<NioDatagramChannel>() {
 //                        @Override
 //                        public NioDatagramChannel newChannel() {
@@ -157,17 +157,18 @@ public class UdpMulticast {
                 // linux系统下使用SO_REUSEPORT特性，使得多个线程绑定同一个端口
                 int cpuNum = Runtime.getRuntime().availableProcessors();
                 logger.info("using epoll reuseport and cpu:" + cpuNum);
+                EpollDatagramChannel   epollChannel=null;
                 for (int i = 0; i < cpuNum; i++) {
                     logger.info("worker-{} bind", i);
                     //6、绑定server，通过调用sync（）方法异步阻塞，直到绑定成功
-                    CHANNEL = (NioDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
-
+                    epollChannel  = (EpollDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
                 }
-
+                epollChannel.joinGroup(GROUPADDRESS, networkInterface).sync();
             } else {
                 CHANNEL = (NioDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
+                CHANNEL.joinGroup(GROUPADDRESS, networkInterface).sync();
             }
-            CHANNEL.joinGroup(GROUPADDRESS, networkInterface).sync();
+
             //     CHANNEL.newSucceededFuture().sync();
 //            channel.writeAndFlush(MessageProtocol.getMessageProtocol("ddd"));
 
