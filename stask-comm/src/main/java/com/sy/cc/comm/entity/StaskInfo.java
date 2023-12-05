@@ -18,4 +18,6 @@ public class StaskInfo {
     private Check check;
 
     private Cache cache;
+
+    private Boolean  hasEpoll;
 }

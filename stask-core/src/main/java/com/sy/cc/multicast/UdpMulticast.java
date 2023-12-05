@@ -78,6 +78,7 @@ public class UdpMulticast {
     public static void buildMulticast() throws Exception {
         // 组播地址
         // 组播地址
+        boolean hasEpoll=false;
         StaskServer configServer = ConfigBase.getStaskServer();
         if (configServer != null) {
             StaskInfo staskServer = configServer.getStaskServer();
@@ -90,6 +91,9 @@ public class UdpMulticast {
                 Integer port = staskServer.getPort();
                 if (port != null) {
                     GROUPPORT = port;
+                }
+                if(staskServer.getHasEpoll()!=null){
+                    hasEpoll=staskServer.getHasEpoll();
                 }
             }
         }
@@ -147,7 +151,7 @@ public class UdpMulticast {
                     .handler(new UpdInitializer());
 
             // linux平台下支持SO_REUSEPORT特性以提高性能
-            if (Epoll.isAvailable()) {
+            if (Epoll.isAvailable()  && hasEpoll) {
                 logger.info("SO_REUSEPORT");
                 bootstrap.option(EpollChannelOption.SO_REUSEPORT, true);
                 // linux系统下使用SO_REUSEPORT特性，使得多个线程绑定同一个端口
