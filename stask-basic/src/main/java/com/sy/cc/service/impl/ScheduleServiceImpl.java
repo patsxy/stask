@@ -15,6 +15,7 @@ import com.sy.cc.multicast.UdpMulticast;
 
 import com.sy.cc.service.IScheduleService;
 import com.sy.cc.util.SpringUtil;
+import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -183,7 +184,7 @@ public class ScheduleServiceImpl implements IScheduleService {
         //大于
         try {
             //关闭主播
-            NioDatagramChannel channel = UdpMulticast.getCHANNEL();
+            DatagramChannel channel = UdpMulticast.getCHANNEL();
             channel.close();
             //重新链接
             UdpMulticast.buildMulticast();
