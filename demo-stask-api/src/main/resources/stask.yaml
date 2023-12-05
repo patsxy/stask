@@ -1,0 +1,18 @@
+staskServer:
+  address:  225.2.2.2
+  port: 5678
+  type: multicast
+  idleTime: 4
+  check:
+    type: http  #(http,udp)
+  cache:
+    server: true
+    type: redis  #(hazelcast,redis)
+    redis:
+#      host: 192.168.1.179
+#      port: 51369
+      url: 192.168.1.179:51369
+      #password:
+      password: zysoft
+      expire: 18000
+#      type: redis (redis,rediss)

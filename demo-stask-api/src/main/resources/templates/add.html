@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/jquery.contextMenu.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/font-awesome.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/animate.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/style.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/skins.css}" rel="stylesheet"/>
+    <script th:src="@{/js/jquery.min.js}"></script>
+    <script th:src="@{/js/bootstrap.min.js}"></script>
+    <script th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+    <script th:src="@{/js/plugins/slimscroll/jquery.slimscroll.min.js}"></script>
+    <script th:src="@{/js/jquery.contextMenu.min.js}"></script>
+    <script th:src="@{/ajax/libs/blockUI/jquery.blockUI.js}"></script>
+    <script th:src="@{/ajax/libs/layer/layer.min.js}"></script>
+    <script th:src="@{/ajax/libs/bootstrap-table/bootstrap-table.min.js}"></script>
+
+    <script th:src="@{/js/common.js?v=4.7.7}"></script>
+    <script th:src="@{/js/index.js?v=20201208}"></script>
+    <script th:src="@{/ajax/libs/fullscreen/jquery.fullscreen.js}"></script>
+    <script th:src="@{/js/sy-ui.js?v=4.7.7}"></script>
+    <script th:src="@{/js/jquery.serializeJSON.min.js}"></script>
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+    <form class="form-horizontal m" id="form-job-add">
+        <div class="form-group">
+            <label class="col-sm-3 control-label">任务名称：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[name]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">任务cron：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[cron]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">执行任务类名称：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[clazzName]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">执行任务类方法名称：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[clazzMethod]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">实例名称：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[instanceName]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">任务方法参数：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[params]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">任务备注：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[remark]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">是否允许：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[hasEnable]" class="" type="checkbox" id="inputBool">
+
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">租户id：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[tenantId]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">任务id：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[taskId]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">类型：</label>
+            <div class="col-sm-8">
+                <input name="zySysJob[type]" class="form-control" type="text">
+            </div>
+        </div>
+
+
+    </form>
+</div>
+<script>
+    var ctx = window.location.origin;
+    var prefix = ctx + "/data/job"
+    // $("#form-job-add").validate({
+    //     focusCleanup: true
+    // });
+
+    function submitHandler() {
+        let data = $('#form-job-add').serializeJSON();
+        let sendData = {
+            clazzMethod: data.zySysJob.clazzMethod,
+            clazzName: data.zySysJob.clazzName,
+            cron: data.zySysJob.cron,
+            instanceName: data.zySysJob.instanceName,
+            name: data.zySysJob.name,
+            params: data.zySysJob.params,
+            remark: data.zySysJob.remark,
+            hasEnable: data.zySysJob.hasEnable === 'on' ? 1 : 0,
+            taskId: Number(data.zySysJob.taskId),
+            tenantId: Number(data.zySysJob.tenantId),
+            type: Number(data.zySysJob.type)
+
+
+        }
+
+
+        // if ($.validate.form()) {
+        $.operate.save(prefix + "/add",sendData);
+        // }
+    }
+</script>
+</body>
+</html>

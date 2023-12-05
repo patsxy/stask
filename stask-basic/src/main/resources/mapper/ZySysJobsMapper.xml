@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sy.cc.mapper.ZySysJobsMapper">
+    
+    <resultMap type="com.sy.cc.comm.entity.ZySysJobDO" id="ZySysJobResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="cron"    column="cron"    />
+        <result property="clazzName"    column="clazz_name"    />
+        <result property="clazzMethod"    column="clazz_method"    />
+        <result property="instanceName"    column="instance_name"    />
+        <result property="params"    column="params"    />
+        <result property="remark"    column="remark"    />
+        <result property="hasEnable"    column="has_enable"    />
+        <result property="tenantId"    column="tenant_id"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="taskId"    column="task_id"    />
+        <result property="type"    column="type"    />
+    </resultMap>
+
+    <sql id="selectZySysJobVo">
+        select id, name, cron, clazz_name, clazz_method, instance_name, params, remark, has_enable, tenant_id, create_time, update_time, task_id, type from zy_sys_job
+    </sql>
+
+    <select id="selectZySysJobList" parameterType="com.sy.cc.entity.dto.ZySysJobDTO" resultType="com.sy.cc.entity.dto.ZySysJobDTO">
+        <include refid="selectZySysJobVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="cron != null  and cron != ''"> and cron = #{cron}</if>
+            <if test="clazzName != null  and clazzName != ''"> and clazz_name like concat('%', #{clazzName}, '%')</if>
+            <if test="clazzMethod != null  and clazzMethod != ''"> and clazz_method = #{clazzMethod}</if>
+            <if test="instanceName != null  and instanceName != ''"> and instance_name like concat('%', #{instanceName}, '%')</if>
+            <if test="params != null  and params != ''"> and params = #{params}</if>
+            <if test="hasEnable != null "> and has_enable = #{hasEnable}</if>
+            <if test="tenantId != null "> and tenant_id = #{tenantId}</if>
+            <if test="taskId != null "> and task_id = #{taskId}</if>
+            <if test="type != null "> and type = #{type}</if>
+        </where>
+    </select>
+
+
+
+
+
+    <delete id="deleteZySysJobByIds" parameterType="String">
+        delete from zy_sys_job where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

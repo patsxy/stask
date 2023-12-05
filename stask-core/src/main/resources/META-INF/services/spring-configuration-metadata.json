@@ -1,0 +1,39 @@
+{
+  "groups": [
+    {
+      "name": "autodistrib-server",
+      "type": "org.springframework.boot.autoconfigure.web.ServerProperties",
+      "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties",
+      "description": "autodistrib server"
+    }
+  ],
+  "properties": [
+    {
+      "name": "autodistrib-server.port",
+      "type": "java.lang.Integer",
+      "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties",
+      "description": "autodistrib port"
+    },
+    {
+      "name": "autodistrib-server.address",
+      "type": "java.net.InetAddress",
+      "sourceType": "org.springframework.boot.autoconfigure.web.ServerProperties",
+      "description": "autodistrib address"
+    }
+  ],
+  "hints": [
+    {
+      "name": "autodistrib-server.type",
+      "values": [
+        {
+          "value": "multicast",
+          "description": "Multicast type connect."
+        },
+        {
+          "value": "unicast",
+          "description": "Unicast type connect."
+        }
+      ]
+    }
+  ]
+}

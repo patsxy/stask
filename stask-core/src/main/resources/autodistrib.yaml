@@ -1,0 +1,5 @@
+autodistribServer:
+  address:  225.1.2.2
+  port: 5678
+  type: multicast
+  idleTime: 4

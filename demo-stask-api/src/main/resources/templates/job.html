@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org"  >
+<head>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/jquery.contextMenu.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/font-awesome.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/animate.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/style.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/skins.css}" rel="stylesheet"/>
+    <link th:href="@{/css/sy-ui.css}" rel="stylesheet"/>
+    <script th:src="@{/js/jquery.min.js}"></script>
+    <script th:src="@{/js/bootstrap.min.js}"></script>
+    <script th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+    <script th:src="@{/js/plugins/slimscroll/jquery.slimscroll.min.js}"></script>
+    <script th:src="@{/js/jquery.contextMenu.min.js}"></script>
+    <script th:src="@{/ajax/libs/blockUI/jquery.blockUI.js}"></script>
+    <script th:src="@{/ajax/libs/layer/layer.min.js}"></script>
+    <script th:src="@{/ajax/libs/bootstrap-table/bootstrap-table.min.js}"></script>
+
+    <script th:src="@{/js/common.js?v=4.7.7}"></script>
+    <script th:src="@{/js/index.js?v=20201208}"></script>
+    <script th:src="@{/ajax/libs/fullscreen/jquery.fullscreen.js}"></script>
+    <script th:src="@{/js/sy-ui.js?v=4.7.7}"></script>
+</head>
+<body class="gray-bg">
+     <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>任务名称：</label>
+                                <input type="text" name="name"/>
+                            </li>
+                            <li>
+                                <label>任务cron：</label>
+                                <input type="text" name="cron"/>
+                            </li>
+                            <li>
+                                <label>执行任务类名称：</label>
+                                <input type="text" name="clazzName"/>
+                            </li>
+                            <li>
+                                <label>执行任务类方法名称：</label>
+                                <input type="text" name="clazzMethod"/>
+                            </li>
+                            <li>
+                                <label>实例名称：</label>
+                                <input type="text" name="instanceName"/>
+                            </li>
+                            <li>
+                                <label>任务方法参数：</label>
+                                <input type="text" name="params"/>
+                            </li>
+                            <li>
+                                <label>是否允许：</label>
+                                <input type="text" name="hasEnable"/>
+                            </li>
+                            <li>
+                                <label>租户id：</label>
+                                <input type="text" name="tenantId"/>
+                            </li>
+                            <li>
+                                <label>task_id：</label>
+                                <input type="text" name="taskId"/>
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search('formId','ZySysJob',1,10)"><i class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="$.operate.add()"  >
+                    <i class="fa fa-plus"></i> 添加
+                </a>
+<!--                <a class="btn btn-primary single disabled" onclick="$.operate.edit()"  >-->
+<!--                    <i class="fa fa-edit"></i> 修改-->
+<!--                </a>-->
+                <a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()"  >
+                    <i class="fa fa-remove"></i> 删除
+                </a>
+<!--                <a class="btn btn-warning" onclick="$.table.exportExcel()"  >-->
+<!--                    <i class="fa fa-download"></i> 导出-->
+<!--                </a>-->
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="ZySysJob"></table>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        var ctx = window.location.href;
+        var prefix = ctx + "data/job";
+
+        $(function() {
+            var options = {
+                id: "ZySysJob",
+                url: prefix + "/page",
+                createUrl:  "/add",
+                updateUrl:  "/edit/{id}",
+                removeUrl:  "/remove",
+                exportUrl: prefix + "/export",
+                modalName: "任务",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'id',
+                    title: '${comment}',
+                    visible: false
+                },
+                {
+                    field: 'name',
+                    title: '任务名称'
+                },
+                {
+                    field: 'cron',
+                    title: '任务cron'
+                },
+                {
+                    field: 'clazzName',
+                    title: '任务类名称'
+                },
+                {
+                    field: 'clazzMethod',
+                    title: '任务类方法名称'
+                },
+                {
+                    field: 'instanceName',
+                    title: '实例名称'
+                },
+                {
+                    field: 'params',
+                    title: '任务方法参数'
+                },
+                {
+                    field: 'remark',
+                    title: '任务备注'
+                },
+                {
+                    field: 'hasEnable',
+                    title: '是否允许'
+                },
+                {
+                    field: 'tenantId',
+                    title: '租户id'
+                },
+                {
+                    field: 'taskId',
+                    title: 'task_id'
+                },
+                {
+                    field: 'type',
+                    title: 'type'
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    formatter: function(value, row, index) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs " href="javascript:void(0)" onclick="$.operate.edit(\'' + row.id + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs " href="javascript:void(0)" onclick="$.operate.remove(\'' + row.id + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+        });
+
+        function options1() {
+            var temp = "";
+            var obj = table.config['ZySysJob'];
+            for (var i in obj) {
+                temp += i + ":" + obj[i] + "<br/>";
+            }
+            $.modal.alert(temp);
+        }
+    </script>
+
+
+</body>
+</html>

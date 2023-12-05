@@ -1,0 +1,7 @@
+autodistribClient:
+  address:  172.32.1.113
+  port: 1234
+  type: unicast
+  idleTime: 2
+  groups:
+    - 172.32.1.113:5678
