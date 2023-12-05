@@ -121,9 +121,10 @@ public class UdpMulticast {
                         if (!address.getHostAddress().equals("127.0.0.1")) {
                             localAddress = address;
                             networkInterface = network;
+                            logger.info("网络接口名称为：" + networkInterface.getName());
+                            logger.info("网卡接口地址：" + address.getHostAddress());
                         }
-                        logger.info("网络接口名称为：" + networkInterface.getName());
-                        logger.info("网卡接口地址：" + address.getHostAddress());
+
                     }
                 }
             }
