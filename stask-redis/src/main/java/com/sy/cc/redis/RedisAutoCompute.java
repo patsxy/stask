@@ -59,13 +59,14 @@ public class RedisAutoCompute implements AutoCompute {
     private static final int THREE = 3;
     private static final int ZERO = 0;
     private static final long ONESECOND = 1000L;
-  //  protected static AtomicBoolean autoStatus = new AtomicBoolean(false);
+    //  protected static AtomicBoolean autoStatus = new AtomicBoolean(false);
 
     protected static AtomicInteger rotation = new AtomicInteger(0);
 
-    public static int getTHREE(){
+    public static int getTHREE() {
         return THREE;
     }
+
     public static String getEXECERSTR() {
         return EXECERSTR;
     }
@@ -141,7 +142,7 @@ public class RedisAutoCompute implements AutoCompute {
                 //没找到加入新的 并将网络host状态变动
                 addHost(userInfo, execers);
                 //网络变动
-               // autoStatus.set(true);
+                // autoStatus.set(true);
                 execAll.setExecers(execers);
                 execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
             }
@@ -157,9 +158,15 @@ public class RedisAutoCompute implements AutoCompute {
 
         }
         RLock lock = redisson.getLock(EXECERSTRLOCK);
-        lock.lock(TWO,TimeUnit.SECONDS);
-        execerRBucket.set(execAll);
-        lock.unlock();
+        try {
+            if (lock.tryLock(TWO, TWO, TimeUnit.SECONDS)) {
+                execerRBucket.set(execAll);
+
+                lock.unlock();
+            }
+        } catch (Exception e) {
+            logger.error("获取redis锁失败!", e);
+        }
     }
 
     private static void addHost(UserInfo userInfo, Map<String, UserInfo> execers) {
@@ -182,7 +189,7 @@ public class RedisAutoCompute implements AutoCompute {
         String mapMaster = masterRBucket.get();
 
         if (execAll != null) {
-          //  execAll.setStatus(ExecerStatusEnum.NO_CHANGE.getCode());
+            //  execAll.setStatus(ExecerStatusEnum.NO_CHANGE.getCode());
         } else {
             //Hazelcast 传播 造成数据丢失
             execAll = new Execer();
@@ -205,117 +212,129 @@ public class RedisAutoCompute implements AutoCompute {
                 logger.info(present + "删除master:" + mapMaster);
 
                 RLock lock = redisson.getLock(MASTERLOCK);
+                try {
 
-                lock.lock(THREE,TimeUnit.SECONDS);
-                masterRBucket.delete();
-                lock.unlock();
-              //  autoStatus.set(true);
+                    if (lock.tryLock(THREE, THREE, TimeUnit.SECONDS)) {
+                        masterRBucket.delete();
+
+                        lock.unlock();
+                    }
+                    //  autoStatus.set(true);
+                } catch (Exception e) {
+                    logger.error("获取redis锁失败!", e);
+                }
 
 
             }
             RLock lock = redisson.getLock(EXECERSTRLOCK);
-            lock.lock(TWO,TimeUnit.SECONDS);
-            if (MapUtils.nonNull(execAllLoacl)) {
-                for (Map.Entry<String, UserInfo> host : execAllLoacl.entrySet()) {
+            try {
+
+                if (lock.tryLock(TWO, TWO, TimeUnit.SECONDS)) {
+                    if (MapUtils.nonNull(execAllLoacl)) {
+                        for (Map.Entry<String, UserInfo> host : execAllLoacl.entrySet()) {
 //                    if(!userInfo.getUuid().equals(host.getValue().getUuid())){
 //                        //不是自己不检查
 //                        continue;
 //                    }
-                    long epochSecond = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().getEpochSecond();
-                    UserInfo value = host.getValue();
-                    long l = epochSecond - value.getTime();
-                    if (timeOut * THREE < l) {
-                        logger.info(host.getKey() + "主机超时！");
-                        AutoCheckTypeEnum checkType = AutoCheckConfig.getCheckType();
-                        if (checkType == null) {
-                            checkType = AutoCheckTypeEnum.HTTP;
-                        }
-                        switch (checkType) {
-                            case UDP:
-                                CompletableFuture<UdpProtocol> future = CompletableFuture.supplyAsync(() -> {
-
-                                    UdpProtocol udpProtocol = new UdpProtocol<>();
-                                    udpProtocol.setUuid(host.getKey());
-                                    udpProtocol.setType(MessageTypeEnum.APPLRECEIVE);
-                                    udpProtocol.setData(epochSecond);
-                                    String string = JSONObject.toJSONString(udpProtocol);
-                                    getUdpMulticastService().getSendRMap().put(host.getKey(), udpProtocol);
-                                    getUdpMulticastService().sendReceiveMap(udpProtocol);
-                                    while (true) {
-                                        long epochSecond1 = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().getEpochSecond();
-                                        UdpProtocol udpProtocol1 = getUdpMulticastService().getSendRMap().get(host.getKey());
-                                        if (null == udpProtocol1) {
-                                            return null;
-                                        } else if (udpProtocol1.getType() == MessageTypeEnum.RECEIVE) {
-                                            //  remoteHost(mapMaster, execAll, host);
-                                            return udpProtocol1;
-                                        } else if (epochSecond1 - epochSecond > 2) {
-                                            return null;
-                                        }
-                                    }
-
-
-                                });
-                                try {
-                                    UdpProtocol udpProtocol1 = future.get(1, TimeUnit.SECONDS);
-                                    if (udpProtocol1 == null || udpProtocol1.getType() != MessageTypeEnum.RECEIVE) {
-                                        remoteHost(mapMaster, execAll, host);
-                                    } else {
-                                        value.setTime(epochSecond);
-                                        //还没超时的，放入新的list中。
-                                        execAllLoacl.put(host.getKey(), value);
-                                    }
-                                } catch (Exception e) {
-                                    logger.info("再次检查请求超时！");
-                                    remoteHost(mapMaster, execAll, host);
+                            long epochSecond = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().getEpochSecond();
+                            UserInfo value = host.getValue();
+                            long l = epochSecond - value.getTime();
+                            if (timeOut * THREE < l) {
+                                logger.info(host.getKey() + "主机超时！");
+                                AutoCheckTypeEnum checkType = AutoCheckConfig.getCheckType();
+                                if (checkType == null) {
+                                    checkType = AutoCheckTypeEnum.HTTP;
                                 }
+                                switch (checkType) {
+                                    case UDP:
+                                        CompletableFuture<UdpProtocol> future = CompletableFuture.supplyAsync(() -> {
+
+                                            UdpProtocol udpProtocol = new UdpProtocol<>();
+                                            udpProtocol.setUuid(host.getKey());
+                                            udpProtocol.setType(MessageTypeEnum.APPLRECEIVE);
+                                            udpProtocol.setData(epochSecond);
+                                            String string = JSONObject.toJSONString(udpProtocol);
+                                            getUdpMulticastService().getSendRMap().put(host.getKey(), udpProtocol);
+                                            getUdpMulticastService().sendReceiveMap(udpProtocol);
+                                            while (true) {
+                                                long epochSecond1 = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().getEpochSecond();
+                                                UdpProtocol udpProtocol1 = getUdpMulticastService().getSendRMap().get(host.getKey());
+                                                if (null == udpProtocol1) {
+                                                    return null;
+                                                } else if (udpProtocol1.getType() == MessageTypeEnum.RECEIVE) {
+                                                    //  remoteHost(mapMaster, execAll, host);
+                                                    return udpProtocol1;
+                                                } else if (epochSecond1 - epochSecond > 2) {
+                                                    return null;
+                                                }
+                                            }
 
 
-                                break;
-                            case HTTP:
-                                try {
-                                    String url = "http://" + value.getAddress() + ":" + value.getPort();
-                                    String s;
-                                    try {
-                                        s = HttpUrlConnectionClientUtil.doGet(url);
-                                    } catch (Exception e) {
-                                        s = "";
-                                    }
-                                    if (!StringUtil.isNullOrEmpty(s)) {
-                                        UserInfo userInfo1 = JSONObject.parseObject(s, UserInfo.class);
-                                        if (userInfo1.getUuid().equals(value.getUuid())) {
-                                            value.setTime(epochSecond);
-                                            //还没超时的，放入新的list中。
-                                            execAllLoacl.put(host.getKey(), value);
+                                        });
+                                        try {
+                                            UdpProtocol udpProtocol1 = future.get(1, TimeUnit.SECONDS);
+                                            if (udpProtocol1 == null || udpProtocol1.getType() != MessageTypeEnum.RECEIVE) {
+                                                remoteHost(mapMaster, execAll, host);
+                                            } else {
+                                                value.setTime(epochSecond);
+                                                //还没超时的，放入新的list中。
+                                                execAllLoacl.put(host.getKey(), value);
+                                            }
+                                        } catch (Exception e) {
+                                            logger.info("再次检查请求超时！");
+                                            remoteHost(mapMaster, execAll, host);
                                         }
-                                    } else {
-                                        remoteHost(mapMaster, execAll, host);
-                                    }
-                                } catch (Exception e) {
-                                    logger.info("端口不存在！",e);
-                                    remoteHost(mapMaster, execAll, host);
+
+
+                                        break;
+                                    case HTTP:
+                                        try {
+                                            String url = "http://" + value.getAddress() + ":" + value.getPort();
+                                            String s;
+                                            try {
+                                                s = HttpUrlConnectionClientUtil.doGet(url);
+                                            } catch (Exception e) {
+                                                s = "";
+                                            }
+                                            if (!StringUtil.isNullOrEmpty(s)) {
+                                                UserInfo userInfo1 = JSONObject.parseObject(s, UserInfo.class);
+                                                if (userInfo1.getUuid().equals(value.getUuid())) {
+                                                    value.setTime(epochSecond);
+                                                    //还没超时的，放入新的list中。
+                                                    execAllLoacl.put(host.getKey(), value);
+                                                }
+                                            } else {
+                                                remoteHost(mapMaster, execAll, host);
+                                            }
+                                        } catch (Exception e) {
+                                            logger.info("端口不存在！", e);
+                                            remoteHost(mapMaster, execAll, host);
+                                        }
+
+                                        break;
                                 }
+                            } else {
+                                value.setTime(epochSecond);
+                                //还没超时的，放入新的list中。
+                                execAllLoacl.put(host.getKey(), value);
 
-                                break;
+
+                            }
                         }
-                    } else {
-                        value.setTime(epochSecond);
-                        //还没超时的，放入新的list中。
-                        execAllLoacl.put(host.getKey(), value);
-
-
                     }
+
+
+                    //修改成新的没超时的
+                    execAll.setExecers(execAllLoacl);
+
+
+                    execerRBucket.set(execAll);
+                    lock.unlock();
                 }
+
+            } catch (Exception e) {
+                logger.error("获取redis锁失败!", e);
             }
-
-
-            //修改成新的没超时的
-            execAll.setExecers(execAllLoacl);
-
-
-            execerRBucket.set(execAll);
-            lock.unlock();
-
             //  INSTANCE.getCPSubsystem().getLock(HazelcastAutoCompute.getMASTERSTR()).unlock();
         }
         //  }
@@ -327,6 +346,7 @@ public class RedisAutoCompute implements AutoCompute {
     public void sycCompute(UserInfo userInfo) {
         RedissonClient redisson = RedisClinet.getRedisson();
         RBucket<String> bucket = redisson.getBucket(MASTER);
+
         if (bucket != null) {
             String master = bucket.get();
             String myuuid = Identity.getUUID();
@@ -336,11 +356,17 @@ public class RedisAutoCompute implements AutoCompute {
                 if (master.equals(myuuid)) {
 
                     RLock lock = redisson.getLock(MASTERLOCK);
-                    lock.lock(THREE,TimeUnit.SECONDS);
+                    try {
 
-                    bucket.set(master);
-                    logger.info("申请成功：" + myuuid);
-                    lock.unlock();
+                        if (lock.tryLock(THREE, THREE, TimeUnit.SECONDS)) {
+                            bucket.set(master);
+                            logger.info("申请成功：" + myuuid);
+                            lock.unlock();
+                        }
+
+                    } catch (Exception e) {
+                        logger.error("获取redis锁失败!", e);
+                    }
                     //取到就是自己是 master  ,自己就要看执行有没变得
                     //添加执行者 ，执行分发
                     logger.info("我是master,需要执行分发");
@@ -355,22 +381,28 @@ public class RedisAutoCompute implements AutoCompute {
                 }
 
             } else {
-                logger.info("没有master,我申请成masert");
+                logger.info("没有master,我申请成master");
+                try {
 
+                    RLock lock = redisson.getLock(MASTERLOCK);
 
-                RLock lock = redisson.getLock(MASTERLOCK);
-                lock.lock(TWO,TimeUnit.SECONDS);
+                    if (lock.tryLock(TWO, TWO, TimeUnit.SECONDS)) {
+                        bucket.set(myuuid);
+                        logger.info("申请成功：" + myuuid);
+                        lock.unlock();
+                    } else {
+                        logger.error("申请master锁，失败！");
+                    }
 
-                bucket.set(myuuid);
-                logger.info("申请成功：" + myuuid);
-
-                lock.unlock();
-                //添加执行者 ，执行分发
-                execDistrib(userInfo);
-
+                    //添加执行者 ，执行分发
+                    execDistrib(userInfo);
+                } catch (Exception e) {
+                    logger.error("获取redis锁失败!,申请成master失败！", e);
+                }
 
             }
         }
+
 
     }
 
@@ -378,16 +410,23 @@ public class RedisAutoCompute implements AutoCompute {
     private static void remoteHost(String master, Execer execAll, Map.Entry<String, UserInfo> host) {
         //有超时的 变动
         RedissonClient redisson = RedisClinet.getRedisson();
-       // autoStatus.set(true);
+        // autoStatus.set(true);
         execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
         if (!StringUtil.isNullOrEmpty(master) && master.equals(host.getKey())) {
             logger.info("master:" + host.getKey() + "超时！清除！" + host.getValue());
 
             RBucket<String> bucket = redisson.getBucket(MASTER);
             RLock lock = redisson.getLock(MASTERLOCK);
-            lock.lock(THREE,TimeUnit.SECONDS);
-            bucket.delete();
-            lock.unlock();
+            try {
+
+                if (lock.tryLock(THREE, THREE, TimeUnit.SECONDS)) {
+                    bucket.delete();
+                    lock.unlock();
+                }
+
+            } catch (Exception e) {
+                logger.error("获取redis锁失败!", e);
+            }
         }
         //有变得
         execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
@@ -405,9 +444,15 @@ public class RedisAutoCompute implements AutoCompute {
         RBucket<Execer> execerRBucket = redisson.getBucket(EXECERSTR);
         //   execAll.setExecers(newMap);
         RLock lock = redisson.getLock(EXECERSTRLOCK);
-        lock.lock(TWO, TimeUnit.SECONDS);
-        execerRBucket.set(execAll);
-        lock.unlock();
+        try {
+            if (lock.tryLock(TWO, TWO, TimeUnit.SECONDS)) {
+                execerRBucket.set(execAll);
+                lock.unlock();
+            }
+
+        } catch (Exception e) {
+            logger.error("获取redis锁失败!", e);
+        }
 
     }
 
@@ -435,25 +480,31 @@ public class RedisAutoCompute implements AutoCompute {
                 Set<DistribExec> applMap = redisson.getSet(SCHEDULEDAPPLY);
                 int status = execAll.getStatus();
                 //有组变动 或者 applMap 申请组不为空 需要重新分配
-                if (MapUtils.isNull(execers) ) {
+                if (MapUtils.isNull(execers)) {
                     logger.info(Identity.getUUID() + "目前，没有执行组！");
                     Set<DistribExec> useMap = redisson.getSet(SCHEDULEDUSE);
                     logger.info("申请组：-》" + JSONObject.toJSONString(applMap));
                     logger.info("使用组：-》" + JSONObject.toJSONString(useMap));
 
-                } else if (status==ExecerStatusEnum.CHANGE.getCode() || CollectionUtil.isNotEmpty(applMap)) {
+                } else if (status == ExecerStatusEnum.CHANGE.getCode() || CollectionUtil.isNotEmpty(applMap)) {
                     logger.info("定时任务，开始重新分配........");
                     adjustDistrib(applMap);
 
                     //修改执行组状态 重新分配完成
-                  //  autoStatus.set(false);
+                    //  autoStatus.set(false);
                     execAll.setStatus(ExecerStatusEnum.NO_CHANGE.getCode());
                     RLock lock = redisson.getLock(EXECERSTRLOCK);
-                    lock.lock(THREE,TimeUnit.SECONDS);
-                    // RBucket<Execer> execerRBucket = redisson.getBucket(EXECERSTR);
-                    execerRBucket.set(execAll);
-                    //RedisUtil.releaseLock(EXECERSTRLOCK, Identity.getUUID());
-                    lock.unlock();
+                    try {
+                        if (lock.tryLock(THREE, THREE, TimeUnit.SECONDS)) {
+                            // RBucket<Execer> execerRBucket = redisson.getBucket(EXECERSTR);
+                            execerRBucket.set(execAll);
+                            lock.unlock();
+                        }
+                        //RedisUtil.releaseLock(EXECERSTRLOCK, Identity.getUUID());
+
+                    } catch (Exception e) {
+                        logger.error("获取redis锁失败!", e);
+                    }
 
                 } else {
                     logger.info(Identity.getUUID() + "定时任务，没变动无需要重新分配！按照userMap执行！");
@@ -486,7 +537,7 @@ public class RedisAutoCompute implements AutoCompute {
         addHost(userInfo, uuidList);
 
         execAll.getExecers().putAll(uuidList);
-      //  autoStatus.set(true);
+        //  autoStatus.set(true);
         execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
 
 
@@ -497,7 +548,7 @@ public class RedisAutoCompute implements AutoCompute {
         RedissonClient redisson = RedisClinet.getRedisson();
         RBucket<Execer> execerRBucket = redisson.getBucket(EXECERSTR);
         Execer execer = execerRBucket.get();
-        if(execer!=null) {
+        if (execer != null) {
             Map<String, UserInfo> execers = execer.getExecers();
 
             List<String> execerList = execers.entrySet().stream().map(m -> m.getKey()).collect(Collectors.toList());
@@ -523,7 +574,7 @@ public class RedisAutoCompute implements AutoCompute {
                 distribAll.clear();
                 distribUse.clear();
 
-                if (execer.getStatus()==ExecerStatusEnum.CHANGE.getCode()) {
+                if (execer.getStatus() == ExecerStatusEnum.CHANGE.getCode()) {
                     logger.info("网络执行主机变动需要重新分配所有任务");
                     //不管是否切换 都需要执行 申请组的分配
                     Integer cn = applGroupDistrib(applMap);
@@ -578,17 +629,21 @@ public class RedisAutoCompute implements AutoCompute {
 
                 logger.info("分配列表--》", collect.toString());
                 RLock lock = redisson.getLock(SCHEDULEDLOCKUSE);
-                lock.lock(THREE,TimeUnit.SECONDS);
-                //清空使用组
-                userMap.clear();
-                //添加使用组
-                List<DistribExec> collect1 = distribAll.stream().collect(Collectors.toSet()).stream().collect(Collectors.toList());
-                userMap.addAll(collect1);
+                try {
+                    if (lock.tryLock(THREE, THREE, TimeUnit.SECONDS)) {
+                        //清空使用组
+                        userMap.clear();
+                        //添加使用组
+                        List<DistribExec> collect1 = distribAll.stream().collect(Collectors.toSet()).stream().collect(Collectors.toList());
+                        userMap.addAll(collect1);
 
 
-                // RedisUtil.set(SCHEDULEDUSE, userMap, EXECERSTR_TIME_OUT);
-                lock.unlock();
-
+                        // RedisUtil.set(SCHEDULEDUSE, userMap, EXECERSTR_TIME_OUT);
+                        lock.unlock();
+                    }
+                } catch (Exception e) {
+                    logger.error("获取redis锁失败!", e);
+                }
             }
         }
     }
@@ -640,7 +695,7 @@ public class RedisAutoCompute implements AutoCompute {
                 distribAppl.add(distribExec.getTaskId());
 
                 //移除原有的申请组
-               // applMap.remove(distribExec);
+                // applMap.remove(distribExec);
             }
             //移除原有的申请组
             applMap.clear();
@@ -674,20 +729,25 @@ public class RedisAutoCompute implements AutoCompute {
                 addHost(userInfo, execers);
 
                 //变动
-               // autoStatus.set(true);
+                // autoStatus.set(true);
                 execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
 
                 logger.info("网络组变动！");
                 RLock lock = redisson.getLock(EXECERSTRLOCK);
-                lock.lock(TWO, TimeUnit.SECONDS);
+                try {
+                    if (lock.tryLock(TWO, TWO, TimeUnit.SECONDS)) {
 
-                execerRBucket.set(execAll);
-                lock.unlock();
+                        execerRBucket.set(execAll);
+                        lock.unlock();
+                    }
+                } catch (Exception e) {
+                    logger.error("获取redis锁失败!", e);
+                }
             }
             //有了就不做任何操作！
         } else {
             execAll = new Execer();
-          //  autoStatus.set(true);
+            //  autoStatus.set(true);
             execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
             logger.info("网络组变动！");
             Map<String, UserInfo> execers = new HashMap<>();
@@ -695,12 +755,16 @@ public class RedisAutoCompute implements AutoCompute {
             execAll.setExecers(execers);
 
             RLock lock = redisson.getLock(EXECERSTRLOCK);
-            lock.lock(TWO, TimeUnit.SECONDS);
+            try {
+                if (lock.tryLock(TWO, TWO, TimeUnit.SECONDS)) {
 
-            execerRBucket.set(execAll);
-            lock.unlock();
+                    execerRBucket.set(execAll);
+                    lock.unlock();
+                }
+            } catch (Exception e) {
+                logger.error("获取redis锁失败!", e);
+            }
         }
-
 
 
         return execAll;
