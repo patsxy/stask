@@ -42,10 +42,15 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
                 Set<DistribExec> currCollect = useMap.stream().filter(f -> !zySysJobDOS.contains(f.getTaskId())).collect(Collectors.toSet());
                 RLock lock = redisson.getLock(RedisAutoCompute.getEXECERSTRLOCK());
                 //加锁
-                lock.lock(RedisAutoCompute.getTHREE(), TimeUnit.SECONDS);// 阻塞式等待
-                useMap.clear();
-                useMap.addAll(currCollect);
-                lock.unlock();
+                try {
+                    if (lock.tryLock(RedisAutoCompute.getTHREE(), RedisAutoCompute.getTHREE(), TimeUnit.SECONDS)) {// 阻塞式等待
+                        useMap.clear();
+                        useMap.addAll(currCollect);
+                        lock.unlock();
+                    }
+                } catch (Exception e) {
+                    logger.error("获取redis锁失败!", e);
+                }
             }
         }
     }
@@ -56,41 +61,48 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
             RedissonClient redisson = RedisClinet.getRedisson();
             RLock lock = redisson.getLock(RedisAutoCompute.getEXECERSTRLOCK());
             //加锁
-            lock.lock(RedisAutoCompute.getTHREE(), TimeUnit.SECONDS);// 阻塞式等待
-            Set<DistribExec> applMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDAPPLY());
-            Set<DistribExec> useMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDUSE());
+            try {
+                if (lock.tryLock(RedisAutoCompute.getTHREE(), RedisAutoCompute.getTHREE(), TimeUnit.SECONDS)) {// 阻塞式等待
+                    Set<DistribExec> applMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDAPPLY());
+                    Set<DistribExec> useMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDUSE());
 
-            String uuid = Identity.getUUID();
-            if (CollectionUtils.isNotEmpty(useMap)) {
-                List<String> collect = zySysJobDOS.stream().map(m -> m.getId() + "").collect(Collectors.toList());
-                List<String> allUser = new ArrayList<>();
+                    String uuid = Identity.getUUID();
+                    if (CollectionUtils.isNotEmpty(useMap)) {
+                        List<String> collect = zySysJobDOS.stream().map(m -> m.getId() + "").collect(Collectors.toList());
+                        List<String> allUser = new ArrayList<>();
 
 
-                List<String> oldTaskId = useMap.stream().map(DistribExec::getTaskId).collect(Collectors.toList());
-                Set<DistribExec> newDistribExecs = zySysJobDOS.stream().filter(f -> !oldTaskId.contains(f.getId() + ""))
-                        .map(m -> DistribExec.builder().uuid(uuid).taskId(m.getId() + "").build())
-                        .collect(Collectors.toSet());
-                Set<DistribExec> surplus = applMap.stream().filter(f -> !collect.contains(f.getTaskId())).collect(Collectors.toSet());
+                        List<String> oldTaskId = useMap.stream().map(DistribExec::getTaskId).collect(Collectors.toList());
+                        Set<DistribExec> newDistribExecs = zySysJobDOS.stream().filter(f -> !oldTaskId.contains(f.getId() + ""))
+                                .map(m -> DistribExec.builder().uuid(uuid).taskId(m.getId() + "").build())
+                                .collect(Collectors.toSet());
+                        Set<DistribExec> surplus = applMap.stream().filter(f -> !collect.contains(f.getTaskId())).collect(Collectors.toSet());
 
-                //加入历史
-                if (CollectionUtil.isNotEmpty(surplus)) {
-                    newDistribExecs.addAll(surplus);
+                        //加入历史
+                        if (CollectionUtil.isNotEmpty(surplus)) {
+                            newDistribExecs.addAll(surplus);
+                        }
+
+                        //清除历史
+                        applMap.clear();
+                        //加入 自己
+                        applMap.addAll(newDistribExecs);
+
+
+                    } else {
+                        applMap.addAll(zySysJobDOS.stream()
+                                .map(m -> DistribExec.builder().uuid(uuid).taskId(m.getId() + "").build())
+                                .collect(Collectors.toList()));
+                    }
+
+
+                    lock.unlock();
                 }
 
-                //清除历史
-                applMap.clear();
-                //加入 自己
-                applMap.addAll(newDistribExecs);
-
-
-            } else {
-                applMap.addAll(zySysJobDOS.stream()
-                        .map(m -> DistribExec.builder().uuid(uuid).taskId(m.getId() + "").build())
-                        .collect(Collectors.toList()));
+            } catch (Exception e) {
+                logger.error("获取redis锁失败!", e);
             }
 
-
-            lock.unlock();
         }
 
 
