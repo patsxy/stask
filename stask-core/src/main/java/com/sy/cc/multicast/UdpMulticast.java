@@ -1,15 +1,16 @@
 package com.sy.cc.multicast;
 
 import com.alibaba.fastjson2.JSONObject;
+
 import com.sy.cc.comm.config.ConfigBase;
 import com.sy.cc.comm.emuns.MessageTypeEnum;
 import com.sy.cc.comm.entity.*;
-
 import com.sy.cc.http.ServerHttp;
-
+import com.sy.cc.uitl.IPUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.epoll.EpollDatagramChannel;
@@ -31,7 +32,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Enumeration;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class UdpMulticast {
 
@@ -45,11 +45,15 @@ public class UdpMulticast {
     private static int TIMEOUT = 4000;
     private static DatagramChannel CHANNEL;
 
+    private static boolean hasEpoll = false;
+    ;
+
+
     private static InetSocketAddress GROUPADDRESS;
 
     private static InetAddress localAddress = null;
 
-    private static String address;
+    private static String address = null;
 
     public static String getAddress() {
         return address;
@@ -72,14 +76,10 @@ public class UdpMulticast {
     }
 
 
-
-
-
-
     public static void buildMulticast() throws Exception {
         // 组播地址
         // 组播地址
-        boolean hasEpoll = false;
+
 
         StaskServer configServer = ConfigBase.getStaskServer();
         if (configServer != null) {
@@ -108,32 +108,43 @@ public class UdpMulticast {
 
         try {
 //            NetworkInterface ni = NetworkInterface.getByInetAddress(InetAddress.getByName(localIp));
+            if (address == null) {
+                Enumeration<NetworkInterface> niall = NetworkInterface.getNetworkInterfaces();
+                // Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                NetworkInterface networkInterface = null;
 
-            Enumeration<NetworkInterface> niall = NetworkInterface.getNetworkInterfaces();
-            // Enumeration<InetAddress> addresses = ni.getInetAddresses();
-            NetworkInterface networkInterface = null;
+                while (niall.hasMoreElements()) {
+                    NetworkInterface network = niall.nextElement();
+                    Enumeration<InetAddress> inetAddresses = network.getInetAddresses();
+                    while (inetAddresses.hasMoreElements()) {
+                        InetAddress address = inetAddresses.nextElement();
+                        if (address instanceof Inet4Address) {
+                            if ((!address.isLoopbackAddress() && address.isSiteLocalAddress() && !address.isAnyLocalAddress())) {
+                                localAddress = address;
+                                networkInterface = network;
+                                logger.info("网络接口名称为：" + networkInterface.getName());
+                                logger.info("网卡接口地址：" + address.getHostAddress());
+                            }
 
-            while (niall.hasMoreElements()) {
-                NetworkInterface network = niall.nextElement();
-                Enumeration<InetAddress> inetAddresses = network.getInetAddresses();
-                while (inetAddresses.hasMoreElements()) {
-                    InetAddress address = inetAddresses.nextElement();
-                    if (address instanceof Inet4Address) {
-                        if (!address.getHostAddress().equals("127.0.0.1")) {
-                            localAddress = address;
-                            networkInterface = network;
-                            logger.info("网络接口名称为：" + networkInterface.getName());
-                            logger.info("网卡接口地址：" + address.getHostAddress());
                         }
-
                     }
                 }
-            }
 //
-            logger.info("当前地址：{}", localAddress.getHostAddress());
-            logger.info("Epoll.isAvailable():{}", Epoll.isAvailable());
-            logger.info("hasEpoll:{}",hasEpoll);
-            address = localAddress.getHostAddress();
+                logger.info("当前地址：{}", localAddress.getHostAddress());
+                logger.info("Epoll.isAvailable():{}", Epoll.isAvailable());
+                logger.info("hasEpoll:{}", hasEpoll);
+
+                address = localAddress.getHostAddress();
+            }
+            InetAddress inetAddress;
+            if(localAddress==null) {
+                localAddress =   IPUtil.fromIpv4String(address);
+                inetAddress=localAddress;
+            } else {
+                inetAddress=localAddress;
+            }
+
+
             if (Epoll.isAvailable() && hasEpoll) {
 
                 //表示服务器连接监听线程组，专门接受 accept 新的客户端client 连接
@@ -151,7 +162,7 @@ public class UdpMulticast {
 //                    })
 
                         .localAddress(new InetSocketAddress(localAddress, 0))
-                        .option(ChannelOption.IP_MULTICAST_IF, networkInterface)
+                        //.option(ChannelOption.IP_MULTICAST_IF, networkInterface)
                         .option(ChannelOption.IP_MULTICAST_ADDR, InetAddress.getByName(localAddress.getHostAddress()))
                         .option(ChannelOption.SO_BROADCAST, true)
                         .option(ChannelOption.SO_REUSEADDR, true)
@@ -174,7 +185,8 @@ public class UdpMulticast {
                     CHANNEL = (EpollDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
 
                 }
-                CHANNEL.joinGroup(GROUPADDRESS, networkInterface).sync();
+
+                CHANNEL.joinGroup(GROUPADDRESS.getAddress()).sync();
 
             } else {
 
@@ -192,7 +204,7 @@ public class UdpMulticast {
 //                        }
 //                    })
                         .localAddress(new InetSocketAddress(localAddress, 0))
-                        .option(ChannelOption.IP_MULTICAST_IF, networkInterface)
+                        //.option(ChannelOption.IP_MULTICAST_IF, networkInterface)
                         .option(ChannelOption.IP_MULTICAST_ADDR, InetAddress.getByName(localAddress.getHostAddress()))
                         .option(ChannelOption.SO_BROADCAST, true)
                         .option(ChannelOption.SO_REUSEADDR, true)
@@ -203,7 +215,10 @@ public class UdpMulticast {
 
 
                 CHANNEL = (NioDatagramChannel) bootstrap.bind(GROUPADDRESS.getPort()).sync().channel();
-                CHANNEL.joinGroup(GROUPADDRESS, networkInterface).sync();
+
+
+                CHANNEL.joinGroup(GROUPADDRESS.getAddress()).sync();
+
             }
 
 
@@ -216,7 +231,6 @@ public class UdpMulticast {
         } finally {
             //   group.shutdownGracefully();
         }
-
 
 
     }
@@ -234,11 +248,10 @@ public class UdpMulticast {
     public static void send(String sendStr) {
         ByteBuf byteBuf = Unpooled.wrappedBuffer(sendStr.getBytes(StandardCharsets.UTF_8));
         DatagramPacket datagramPacket = new DatagramPacket(byteBuf, UdpMulticast.getGROUPADDRESS());
+
         CHANNEL.writeAndFlush(datagramPacket);
+
     }
-
-
-
 
 
     public static UdpProtocol sendReceive(String sendStr) {
@@ -277,7 +290,7 @@ public class UdpMulticast {
         UserInfo userInfo = new UserInfo();
         userInfo.setUuid(Identity.getUUID());
         userInfo.setPort(ServerHttp.getLocalPort());
-        if(com.sy.cc.comm.util.StringUtil.isNullOrEmpty(UdpMulticast.getAddress()) || UdpMulticast.getAddress().equals("0.0.0.0")) {
+        if (StringUtil.isNullOrEmpty(UdpMulticast.getAddress()) || UdpMulticast.getAddress().equals("0.0.0.0")) {
             userInfo.setAddress(UdpMulticast.getLocalAddress().getHostAddress());
         } else {
             userInfo.setAddress(UdpMulticast.getAddress());
