@@ -12,6 +12,7 @@ public class StaskInfo {
 
     private String type;
 
+    private Boolean enable;
     private Integer idleTime = 4;
     private List<String> groups;
 

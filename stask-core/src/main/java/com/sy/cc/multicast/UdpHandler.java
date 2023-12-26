@@ -9,8 +9,8 @@ import com.sy.cc.comm.emuns.MessageTypeEnum;
 import com.sy.cc.comm.emuns.NettyHaclcastTypeEnum;
 import com.sy.cc.comm.entity.*;
 
-import com.sy.cc.comm.service.AutoCompute;
-import com.sy.cc.comm.service.UdpMulticastService;
+import com.sy.cc.comm.service.IAutoCompute;
+import com.sy.cc.comm.service.IUdpMulticastService;
 
 import com.sy.cc.comm.config.AutoCheckConfig;
 import io.netty.buffer.ByteBuf;
@@ -31,32 +31,32 @@ public class UdpHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     private static final Logger logger = LoggerFactory.getLogger(UdpHandler.class);
 
     public static class Hold {
-        private static AutoCompute autoCompute;
-        private static UdpMulticastService udpMulticastService;
+        private static IAutoCompute IAutoCompute;
+        private static IUdpMulticastService IUdpMulticastService;
     }
 
-    public static AutoCompute getAutoCompute() {
-        if (Hold.autoCompute != null) {
-            return Hold.autoCompute;
+    public static IAutoCompute getAutoCompute() {
+        if (Hold.IAutoCompute != null) {
+            return Hold.IAutoCompute;
         }
-        Hold.autoCompute=null;
-        ServiceLoader<AutoCompute> autoCompute = ServiceLoader.load(AutoCompute.class);
-        for (AutoCompute dao : autoCompute) {
-            Hold.autoCompute=dao;
+        Hold.IAutoCompute =null;
+        ServiceLoader<IAutoCompute> autoCompute = ServiceLoader.load(IAutoCompute.class);
+        for (IAutoCompute dao : autoCompute) {
+            Hold.IAutoCompute =dao;
         }
 
-        return Hold.autoCompute;
+        return Hold.IAutoCompute;
 
     }
 
-    public static UdpMulticastService getUdpMulticastService(){
-        if(Hold.udpMulticastService!=null){
-            return  Hold.udpMulticastService;
+    public static IUdpMulticastService getUdpMulticastService(){
+        if(Hold.IUdpMulticastService !=null){
+            return  Hold.IUdpMulticastService;
         }
 
-        Hold.udpMulticastService=new UdpMulticastServiceImpl();
+        Hold.IUdpMulticastService =new IUdpMulticastServiceImpl();
 
-        return  Hold.udpMulticastService;
+        return  Hold.IUdpMulticastService;
     }
 
 

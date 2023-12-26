@@ -5,7 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.sy.cc.comm.emuns.NettyHaclcastTypeEnum;
 import com.sy.cc.comm.entity.*;
 
-import com.sy.cc.comm.service.AutoCompute;
+import com.sy.cc.comm.service.IAutoCompute;
 
 import com.sy.cc.comm.config.AutoCheckConfig;
 
@@ -25,20 +25,20 @@ public class ServerHandler extends SimpleChannelInboundHandler<MessageProtocol>{
     private static final UUID uuid=UUID.randomUUID();
 
     public  static  class  Hold{
-        private static AutoCompute autoCompute;
+        private static IAutoCompute IAutoCompute;
     }
 
-    public static AutoCompute getAutoCompute(){
-        if(Hold.autoCompute!=null){
-            return  Hold.autoCompute;
+    public static IAutoCompute getAutoCompute(){
+        if(Hold.IAutoCompute !=null){
+            return  Hold.IAutoCompute;
         }
-       Hold.autoCompute=null;
-        ServiceLoader<AutoCompute> autoCompute = ServiceLoader.load(AutoCompute.class);
-        for (AutoCompute dao : autoCompute) {
-           Hold.autoCompute=dao;
+       Hold.IAutoCompute =null;
+        ServiceLoader<IAutoCompute> autoCompute = ServiceLoader.load(IAutoCompute.class);
+        for (IAutoCompute dao : autoCompute) {
+           Hold.IAutoCompute =dao;
         }
 
-        return Hold.autoCompute;
+        return Hold.IAutoCompute;
 
     }
 

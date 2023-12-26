@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
-
 @Getter
 @Component
 public class ServerConfig implements ApplicationListener<WebServerInitializedEvent> {
@@ -25,10 +24,14 @@ public class ServerConfig implements ApplicationListener<WebServerInitializedEve
 
     private Integer port;
 
-    private String address;
+    private static String address=null;
 
     public Integer getPort() {
         return port;
+    }
+
+    public static void setAddress(String add){
+        address=add;
     }
 
 
@@ -36,7 +39,9 @@ public class ServerConfig implements ApplicationListener<WebServerInitializedEve
     public void onApplicationEvent(WebServerInitializedEvent webServerInitializedEvent) {
         this.port = webServerInitializedEvent.getWebServer().getPort();
         try {
-            address = Inet4Address.getLocalHost().getHostAddress();
+            if(StringUtil.isNullOrEmpty(address)) {
+                address = Inet4Address.getLocalHost().getHostAddress();
+            }
             if (StringUtil.isNullOrEmpty(UdpMulticast.getAddress()) || UdpMulticast.getAddress().equals("0.0.0.0")  ||
                     !UdpMulticast.getAddress().equals(address)
             ) {

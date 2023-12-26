@@ -48,13 +48,16 @@ public class ApplConfigService implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         sendAllAppl();
-        UdpMulticast.buildMulticast();
-
         String type="http";
         StaskServer configServer = ConfigBase.getStaskServer();
         if(configServer!=null){
             StaskInfo staskServer = configServer.getStaskServer();
             if(staskServer!=null){
+                if(staskServer.getEnable()){
+                    //只有enable  才开启组播
+                    UdpMulticast.buildMulticast();
+                }
+
                 Check check = staskServer.getCheck();
                 if(check!=null){
                     String checkType = check.getType();

@@ -14,7 +14,7 @@ This way, even if the server's network is disconnected from others, the final ta
  <dependency>
       <groupId>com.sy.cc</groupId>
       <artifactId>stask-basic</artifactId>
-       <version>1.0-SNAPSHOT</version>
+       <version>1.1</version>
   </dependency>          
 ```
 
@@ -26,7 +26,7 @@ This way, even if the server's network is disconnected from others, the final ta
        <dependency>
             <groupId>com.sy.cc</groupId>
             <artifactId>stask-hazelcast</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
 ```
 
@@ -35,7 +35,7 @@ This way, even if the server's network is disconnected from others, the final ta
         <dependency>
             <groupId>com.sy.cc</groupId>
             <artifactId>stask-redis</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
 ```
 

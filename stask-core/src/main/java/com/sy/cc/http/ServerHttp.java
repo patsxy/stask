@@ -15,10 +15,10 @@ import java.net.InetSocketAddress;
 
 public class ServerHttp {
 
-    private static  Integer localPort;
+    private static  Integer localPort=null;
 
 
-    private static void  setLocalPort(Integer port){
+    public static void  setLocalPort(Integer port){
         localPort=port;
     }
 
@@ -54,8 +54,11 @@ public class ServerHttp {
                         }
                     });
 
+            if(localPort==null){
+                localPort=0;
+            }
 
-            ChannelFuture future = sb.bind(0).sync();
+            ChannelFuture future = sb.bind(localPort).sync();
             InetSocketAddress inetSocketAddress = (InetSocketAddress) future.channel().localAddress();
             localPort = inetSocketAddress.getPort();
             System.out.println("Server...............................");

@@ -3,24 +3,18 @@ package com.sy.cc.comm.config;
 
 import cn.hutool.core.io.resource.ClassPathResource;
 
-import cn.hutool.json.ObjectMapper;
 import com.sy.cc.comm.emuns.AutoCheckTypeEnum;
 import com.sy.cc.comm.emuns.CacheTypeEnum;
 import com.sy.cc.comm.entity.Cache;
 import com.sy.cc.comm.entity.StaskClient;
 import com.sy.cc.comm.entity.StaskServer;
-import com.sy.cc.comm.entity.UdpProtocol;
-import com.sy.cc.comm.service.ConfigProvider;
-import com.sy.cc.comm.service.IScheduleJobService;
+import com.sy.cc.comm.service.IConfigProvider;
 import com.sy.cc.comm.util.StringUtil;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 
-import java.io.File;
 import java.io.InputStream;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.*;
 
 public class ConfigBase {
@@ -64,8 +58,8 @@ public class ConfigBase {
                 Cache cache = Configer.STASK_SERVER.getStaskServer().getCache();
                 if (cache != null) {
                     if (cache.getType().toLowerCase().equals(CacheTypeEnum.HAZELCAST.getMessage())) {
-                        ServiceLoader<ConfigProvider> configProviders = ServiceLoader.load(ConfigProvider.class);
-                        for (ConfigProvider dao : configProviders) {
+                        ServiceLoader<IConfigProvider> configProviders = ServiceLoader.load(IConfigProvider.class);
+                        for (IConfigProvider dao : configProviders) {
                             String name = dao.getClass().getName();
                             if (StringUtil.nonNull(name) && name.equals("com.sy.cc.hazelcast.ConfigProviderImpl")) {
                                 dao.runHazelcastServer();

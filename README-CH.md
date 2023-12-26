@@ -10,7 +10,7 @@
  <dependency>
       <groupId>com.sy.cc</groupId>
       <artifactId>stask-basic</artifactId>
-       <version>1.0-SNAPSHOT</version>
+       <version>1.1</version>
   </dependency>          
 ```
 
@@ -22,7 +22,7 @@
        <dependency>
             <groupId>com.sy.cc</groupId>
             <artifactId>stask-hazelcast</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
 ```
 
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>com.sy.cc</groupId>
             <artifactId>stask-redis</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
 ```
 

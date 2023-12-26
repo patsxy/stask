@@ -23,7 +23,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.YamlConfigBuilder;
 import com.hazelcast.internal.config.DeclarativeConfigUtil;
 import com.hazelcast.internal.config.YamlConfigLocator;
-import com.sy.cc.comm.service.ConfigProvider;
+import com.sy.cc.comm.service.IConfigProvider;
 
 import java.util.Properties;
 
@@ -32,7 +32,7 @@ import java.util.Properties;
  *
  * @see
  */
-public  class ConfigProviderImpl implements ConfigProvider {
+public  class IConfigProviderImpl implements IConfigProvider {
      @Override
      public void runHazelcastServer(){
          HazelcastServer.getHazelcastServer();

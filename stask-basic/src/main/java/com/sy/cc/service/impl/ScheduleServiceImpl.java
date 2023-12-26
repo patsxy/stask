@@ -7,9 +7,12 @@ import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.sy.cc.comm.entity.*;
 import com.sy.cc.comm.exception.ZyException;
+import com.sy.cc.comm.service.IAutoCompute;
 import com.sy.cc.comm.service.IScheduleJobService;
 import com.sy.cc.comm.util.MapUtils;
 
+import com.sy.cc.config.StaskConfig;
+import com.sy.cc.http.ServerHttp;
 import com.sy.cc.mapper.ZySysJobsMapper;
 import com.sy.cc.multicast.UdpMulticast;
 
@@ -17,6 +20,7 @@ import com.sy.cc.service.IScheduleService;
 import com.sy.cc.util.SpringUtil;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+import io.netty.util.internal.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -62,9 +68,14 @@ public class ScheduleServiceImpl implements IScheduleService {
 
     public static class Hold {
         private static IScheduleJobService scheduleJobService;
+
+        private static IAutoCompute autoCompute;
     }
 
 
+    public boolean getIsOpenJob(){
+        return isOpenJob;
+    }
     public static IScheduleJobService getScheduleJobService() {
         if (Hold.scheduleJobService != null) {
             return Hold.scheduleJobService;
@@ -78,12 +89,38 @@ public class ScheduleServiceImpl implements IScheduleService {
         return Hold.scheduleJobService;
     }
 
+    public static IAutoCompute getAutoCompute() {
+        if (Hold.autoCompute != null) {
+            return Hold.autoCompute;
+        }
+        Hold.autoCompute = null;
+        ServiceLoader<IAutoCompute> autoCompute = ServiceLoader.load(IAutoCompute.class);
+        for (IAutoCompute dao : autoCompute) {
+            Hold.autoCompute = dao;
+        }
+
+        return Hold.autoCompute;
+    }
+
+
+
     @Override
     public void execDistrib() {
         //执行定时 更新本地job
         execSchedule();
     }
-
+    public static UserInfo getUserInfo() {
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUuid(Identity.getUUID());
+        userInfo.setPort(ServerHttp.getLocalPort());
+        if (StringUtil.isNullOrEmpty(UdpMulticast.getAddress()) || UdpMulticast.getAddress().equals("0.0.0.0")) {
+            userInfo.setAddress(UdpMulticast.getLocalAddress().getHostAddress());
+        } else {
+            userInfo.setAddress(UdpMulticast.getAddress());
+        }
+        userInfo.setTime(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().getEpochSecond());
+        return userInfo;
+    }
 
     /**
      * 每15秒钟 更新查询 有没变动
@@ -91,93 +128,106 @@ public class ScheduleServiceImpl implements IScheduleService {
     @Scheduled(fixedRateString = "${cron.task:15000}")
     private void execSchedule() {
         try {
-            List<DistribExec> distribExecs = getScheduleJobService().getDistribExecs();
-            List<String> ids = new ArrayList<>();
-            List<ZySysJobDO> listAll = jobMng.selectList(null);
-            if (CollectionUtil.isNotEmpty(distribExecs)) {
-
-                for (int i = 0; i < distribExecs.size(); i++) {
-                    Object distribExec1 = distribExecs.get(i);
-                    if (distribExec1 instanceof DistribExec) {
-                        ids.add(((DistribExec) distribExec1).getTaskId());
-                    } else if (distribExec1 instanceof JSONObject) {
-                        DistribExec distribExec = JSONObject.parseObject(distribExec1 + "", DistribExec.class);
-                        ids.add(distribExec.getTaskId());
+            if (isOpenJob) {
+                Map<String, Object> staskMap = StaskConfig.getStaskMap();
+                if(MapUtils.nonNull(staskMap)){
+                    Boolean b =(Boolean) staskMap.get(StaskConfig.STASKINFO_ENABLE);
+                    if(b!=null && !b){
+                        getAutoCompute().checkHost(getUserInfo());
+                        getAutoCompute().sycCompute(getUserInfo());
                     }
                 }
 
+                List<DistribExec> distribExecs = getScheduleJobService().getDistribExecs();
+                List<String> ids = new ArrayList<>();
+                List<ZySysJobDO> listAll = jobMng.selectList(null);
+                if (CollectionUtil.isNotEmpty(distribExecs)) {
 
-                if (MapUtils.nonNull(FUTURESJOBMAP)) {
-                    //找不到的 已经不是自己的 需要移除
-                    FUTURESJOBMAP.entrySet().stream().filter(f -> !ids.contains(f.getKey())).forEach(m -> {
+                    for (int i = 0; i < distribExecs.size(); i++) {
+                        Object distribExec1 = distribExecs.get(i);
+                        if (distribExec1 instanceof DistribExec) {
+                            ids.add(((DistribExec) distribExec1).getTaskId());
+                        } else if (distribExec1 instanceof JSONObject) {
+                            DistribExec distribExec = JSONObject.parseObject(distribExec1 + "", DistribExec.class);
+                            ids.add(distribExec.getTaskId());
+                        }
+                    }
+
+
+                    if (MapUtils.nonNull(FUTURESJOBMAP)) {
+                        //找不到的 已经不是自己的 需要移除
+                        FUTURESJOBMAP.entrySet().stream().filter(f -> !ids.contains(f.getKey())).forEach(m -> {
+                            removeTask(m.getKey());
+                        });
+                    }
+
+                    List<String> currCollect = listAll.stream().map(m -> m.getId() + "").collect(Collectors.toList());
+                    List<String> delcollect = ids.stream().filter(f -> !currCollect.contains(f)).collect(Collectors.toList());
+                    if (CollectionUtil.isNotEmpty(delcollect)) {
+                        getScheduleJobService().delUseList(delcollect);
+                    }
+
+                }
+
+
+                List<Task> task = getScheduleJobService().execScheduleExec(listAll, FUTURESJOBMAP);
+                if (CollectionUtil.isNotEmpty(task)) {
+                    List<ZySysJobDO> collect = task.stream().map(Task::getJob).collect(Collectors.toList());
+                    if (MapUtils.nonNull(FUTURESJOBMAP)) {
+                        //找不到的 已经不是自己的 需要移除
+                        FUTURESJOBMAP.entrySet().stream().filter(f -> !collect.contains(f.getKey())).forEach(m -> {
+                            removeTask(m.getKey());
+                        });
+                    }
+                } else {
+                    FUTURESJOBMAP.entrySet().stream().forEach(m -> {
                         removeTask(m.getKey());
                     });
                 }
 
-                List<String> currCollect = listAll.stream().map(m -> m.getId() + "").collect(Collectors.toList());
-                List<String> delcollect = ids.stream().filter(f -> !currCollect.contains(f)).collect(Collectors.toList());
-                if (CollectionUtil.isNotEmpty(delcollect)) {
-                    getScheduleJobService().delUseList(delcollect);
-                }
 
-            }
-
-
-            List<Task> task = getScheduleJobService().execScheduleExec(listAll, FUTURESJOBMAP);
-            if (CollectionUtil.isNotEmpty(task)) {
-                List<ZySysJobDO> collect = task.stream().map(Task::getJob).collect(Collectors.toList());
-                if (MapUtils.nonNull(FUTURESJOBMAP)) {
-                    //找不到的 已经不是自己的 需要移除
-                    FUTURESJOBMAP.entrySet().stream().filter(f -> !collect.contains(f.getKey())).forEach(m -> {
-                        removeTask(m.getKey());
-                    });
-                }
-            } else {
-                FUTURESJOBMAP.entrySet().stream().forEach(m -> {
-                    removeTask(m.getKey());
-                });
-            }
+                if (CollectionUtil.isNotEmpty(task)) {
+                    task.forEach(t -> {
+                        if (t != null) {
+                            switch (t.getOperationType()) {
+                                case ADD:
+                                    ScheduledExecDTO scheduledExecDTONew = addTask(getTask(t.getJob()), new CronTrigger(t.getCron()), t.getId(), t.getCron());
+                                    if (Objects.nonNull(scheduledExecDTONew)) {
+                                        FUTURESJOBMAP.put(t.getId(), scheduledExecDTONew);
+                                    }
+                                    break;
+                                case UPDATE:
+                                    ScheduledExecDTO scheduledExecDTOUpdate = updateTask(getTask(t.getJob()), new CronTrigger(t.getCron()), t.getId(), t.getCron());
+                                    if (Objects.nonNull(scheduledExecDTOUpdate)) {
+                                        FUTURESJOBMAP.put(t.getId(), scheduledExecDTOUpdate);
+                                    }
+                                    break;
+                                case REMOVE:
 
 
-            if (CollectionUtil.isNotEmpty(task)) {
-                task.forEach(t -> {
-                    if (t != null) {
-                        switch (t.getOperationType()) {
-                            case ADD:
-                                ScheduledExecDTO scheduledExecDTONew = addTask(getTask(t.getJob()), new CronTrigger(t.getCron()), t.getId(), t.getCron());
-                                if (Objects.nonNull(scheduledExecDTONew)) {
-                                    FUTURESJOBMAP.put(t.getId(), scheduledExecDTONew);
-                                }
-                                break;
-                            case UPDATE:
-                                ScheduledExecDTO scheduledExecDTOUpdate = updateTask(getTask(t.getJob()), new CronTrigger(t.getCron()), t.getId(), t.getCron());
-                                if (Objects.nonNull(scheduledExecDTOUpdate)) {
-                                    FUTURESJOBMAP.put(t.getId(), scheduledExecDTOUpdate);
-                                }
-                                break;
-                            case REMOVE:
+                                    break;
+                                case SUBMITLISTENABLE:
+                                    ListenableFuture<?> listenableFuture = threadPoolTaskScheduler.submitListenable(getTask(t.getJob()));
+                                    break;
 
-
-                                break;
-                            case SUBMITLISTENABLE:
-                                ListenableFuture<?> listenableFuture = threadPoolTaskScheduler.submitListenable(getTask(t.getJob()));
-                                break;
+                            }
 
                         }
-
-                    }
-                });
+                    });
+                }
+                int cn = atomicInteger.getAndAdd(1);
+                Execer execAll = getScheduleJobService().getExecer();
+                if (cn > MAXTIME && execAll == null) {
+                    restartMulicast();
+                    atomicInteger.set(0);
+                }
             }
-            int cn = atomicInteger.getAndAdd(1);
-            Execer execAll = getScheduleJobService().getExecer();
-            if (cn > MAXTIME && execAll == null) {
-                restartMulicast();
-                atomicInteger.set(0);
-            }
-        } catch (Exception e) {
-            logger.error("执行任务计划错误！", e);
+        } catch (Exception e){
+            logger.error("执行任务计划错误！",e);
         }
+
     }
+
 
 
     private void restartMulicast() {
@@ -203,6 +253,9 @@ public class ScheduleServiceImpl implements IScheduleService {
     public boolean hasTask(String key) {
         return FUTURESJOBMAP.get(key) != null;
     }
+
+
+
 
 
     /**

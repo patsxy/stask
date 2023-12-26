@@ -7,4 +7,9 @@ public class Check {
 
     private String type;
 
+    private String dockerAddress;
+
+    private Integer dockerPort;
+
+
 }

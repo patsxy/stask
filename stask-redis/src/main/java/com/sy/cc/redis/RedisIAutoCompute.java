@@ -8,8 +8,8 @@ import com.sy.cc.comm.emuns.AutoCheckTypeEnum;
 import com.sy.cc.comm.emuns.ExecerStatusEnum;
 import com.sy.cc.comm.emuns.MessageTypeEnum;
 import com.sy.cc.comm.entity.*;
-import com.sy.cc.comm.service.AutoCompute;
-import com.sy.cc.comm.service.UdpMulticastService;
+import com.sy.cc.comm.service.IAutoCompute;
+import com.sy.cc.comm.service.IUdpMulticastService;
 import com.sy.cc.comm.util.HttpUrlConnectionClientUtil;
 import com.sy.cc.comm.util.MapUtils;
 
@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class RedisAutoCompute implements AutoCompute {
-    private static final Logger logger = LoggerFactory.getLogger(RedisAutoCompute.class);
+public class RedisIAutoCompute implements IAutoCompute {
+    private static final Logger logger = LoggerFactory.getLogger(RedisIAutoCompute.class);
 
     private static final String EXECERSTR = "STASK:EXECER:V1";
     private static final String EXECERSTRLOCK = "STASK:EXECER:LOCK_V1";
@@ -97,21 +97,21 @@ public class RedisAutoCompute implements AutoCompute {
     }
 
     public static class Hold {
-        private static UdpMulticastService udpMulticastService;
+        private static IUdpMulticastService IUdpMulticastService;
     }
 
 
-    public static UdpMulticastService getUdpMulticastService() {
-        if (Hold.udpMulticastService != null) {
-            return Hold.udpMulticastService;
+    public static IUdpMulticastService getUdpMulticastService() {
+        if (Hold.IUdpMulticastService != null) {
+            return Hold.IUdpMulticastService;
         }
-        Hold.udpMulticastService = null;
-        ServiceLoader<UdpMulticastService> autoCompute = ServiceLoader.load(UdpMulticastService.class);
-        for (UdpMulticastService dao : autoCompute) {
-            Hold.udpMulticastService = dao;
+        Hold.IUdpMulticastService = null;
+        ServiceLoader<IUdpMulticastService> autoCompute = ServiceLoader.load(IUdpMulticastService.class);
+        for (IUdpMulticastService dao : autoCompute) {
+            Hold.IUdpMulticastService = dao;
         }
 
-        return Hold.udpMulticastService;
+        return Hold.IUdpMulticastService;
     }
 
 

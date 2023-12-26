@@ -2,11 +2,11 @@ package com.sy.cc.multicast;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.sy.cc.comm.entity.UdpProtocol;
-import com.sy.cc.comm.service.UdpMulticastService;
+import com.sy.cc.comm.service.IUdpMulticastService;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public class UdpMulticastServiceImpl implements UdpMulticastService {
+public class IUdpMulticastServiceImpl implements IUdpMulticastService {
     private static volatile ConcurrentHashMap<String, UdpProtocol> sendRMap = new ConcurrentHashMap();
 
     public ConcurrentHashMap<String, UdpProtocol> getSendRMap() {

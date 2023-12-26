@@ -4,7 +4,7 @@ import com.sy.cc.comm.entity.UdpProtocol;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public interface UdpMulticastService {
+public interface IUdpMulticastService {
     ConcurrentHashMap<String, UdpProtocol> getSendRMap();
     void sendReceiveMap(UdpProtocol udpProtocol);
 }

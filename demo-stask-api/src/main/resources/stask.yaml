@@ -2,15 +2,19 @@ staskServer:
   address:  225.2.2.2
   port: 5678
   type: multicast
+  enable: false
   idleTime: 4
+  hasEpoll: true
   check:
     type: http  #(http,udp)
+    dockerAddress:  172.32.1.47    #这个ip是和docker的宿主机外部ip
+    dockerPort:  7890  #这个端口要和docker的宿主机外部端口一致
   cache:
     server: true
     type: redis  #(hazelcast,redis)
     redis:
-#      host: 192.168.1.179
-#      port: 51369
+      #      host: 192.168.1.179
+      #      port: 51369
       url: 192.168.1.179:51369
       #password:
       password: zysoft

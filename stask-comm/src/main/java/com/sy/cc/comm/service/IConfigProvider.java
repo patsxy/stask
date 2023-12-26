@@ -1,5 +1,5 @@
 package com.sy.cc.comm.service;
 
-public interface ConfigProvider {
+public interface IConfigProvider {
     void runHazelcastServer();
 }

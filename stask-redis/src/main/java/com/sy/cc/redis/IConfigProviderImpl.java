@@ -17,14 +17,14 @@
 package com.sy.cc.redis;
 
 
-import com.sy.cc.comm.service.ConfigProvider;
+import com.sy.cc.comm.service.IConfigProvider;
 
 /**
  * Locates and loads stask or stask Client configurations from various locations.
  *
  * @see
  */
-public  class ConfigProviderImpl implements ConfigProvider {
+public  class IConfigProviderImpl implements IConfigProvider {
      @Override
      public void runHazelcastServer(){
 

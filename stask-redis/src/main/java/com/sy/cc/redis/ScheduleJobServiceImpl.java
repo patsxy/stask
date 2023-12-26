@@ -37,13 +37,13 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
     public void delUseList(List<String> zySysJobDOS) {
         if (CollectionUtil.isNotEmpty(zySysJobDOS)) {
             RedissonClient redisson = RedisClinet.getRedisson();
-            Set<DistribExec> useMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDUSE());
+            Set<DistribExec> useMap = redisson.getSet(RedisIAutoCompute.getSCHEDULEDUSE());
             if (CollectionUtils.isNotEmpty(useMap)) {
                 Set<DistribExec> currCollect = useMap.stream().filter(f -> !zySysJobDOS.contains(f.getTaskId())).collect(Collectors.toSet());
-                RLock lock = redisson.getLock(RedisAutoCompute.getEXECERSTRLOCK());
+                RLock lock = redisson.getLock(RedisIAutoCompute.getEXECERSTRLOCK());
                 //加锁
                 try {
-                    if (lock.tryLock(RedisAutoCompute.getTHREE(), RedisAutoCompute.getTHREE(), TimeUnit.SECONDS)) {// 阻塞式等待
+                    if (lock.tryLock(RedisIAutoCompute.getTHREE(), RedisIAutoCompute.getTHREE(), TimeUnit.SECONDS)) {// 阻塞式等待
                         useMap.clear();
                         useMap.addAll(currCollect);
                         lock.unlock();
@@ -59,12 +59,12 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
     public void sendListAppl(List<ZySysJobDO> zySysJobDOS) {
         if (CollectionUtil.isNotEmpty(zySysJobDOS)) {
             RedissonClient redisson = RedisClinet.getRedisson();
-            RLock lock = redisson.getLock(RedisAutoCompute.getEXECERSTRLOCK());
+            RLock lock = redisson.getLock(RedisIAutoCompute.getEXECERSTRLOCK());
             //加锁
             try {
-                if (lock.tryLock(RedisAutoCompute.getTHREE(), RedisAutoCompute.getTHREE(), TimeUnit.SECONDS)) {// 阻塞式等待
-                    Set<DistribExec> applMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDAPPLY());
-                    Set<DistribExec> useMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDUSE());
+                if (lock.tryLock(RedisIAutoCompute.getTHREE(), RedisIAutoCompute.getTHREE(), TimeUnit.SECONDS)) {// 阻塞式等待
+                    Set<DistribExec> applMap = redisson.getSet(RedisIAutoCompute.getSCHEDULEDAPPLY());
+                    Set<DistribExec> useMap = redisson.getSet(RedisIAutoCompute.getSCHEDULEDUSE());
 
                     String uuid = Identity.getUUID();
                     if (CollectionUtils.isNotEmpty(useMap)) {
@@ -112,9 +112,9 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
     public List<Task> execScheduleExec(List<ZySysJobDO> listAll, Map<String, ScheduledExecDTO> FUTURESJOBMAP) {
         RedissonClient redisson = RedisClinet.getRedisson();
 
-        Set<DistribExec> useMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDUSE());
-        //  List<DistribExec> applMap = RedisUtil.get(RedisAutoCompute.getSCHEDULEDAPPLY(), List.class);
-        Set<DistribExec> applMap = redisson.getSet(RedisAutoCompute.getSCHEDULEDAPPLY());
+        Set<DistribExec> useMap = redisson.getSet(RedisIAutoCompute.getSCHEDULEDUSE());
+        //  List<DistribExec> applMap = RedisUtil.get(RedisIAutoCompute.getSCHEDULEDAPPLY(), List.class);
+        Set<DistribExec> applMap = redisson.getSet(RedisIAutoCompute.getSCHEDULEDAPPLY());
 
         if (useMap != null) {
 
@@ -246,7 +246,7 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
     public List<DistribExec> getDistribExecs() {
         RedissonClient redisson = RedisClinet.getRedisson();
         //处理自己的数据
-        Set<DistribExec> distribExecs = redisson.getSet(RedisAutoCompute.getSCHEDULEDUSE());
+        Set<DistribExec> distribExecs = redisson.getSet(RedisIAutoCompute.getSCHEDULEDUSE());
         return distribExecs.stream().collect(Collectors.toList());
 
     }
@@ -254,7 +254,7 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
     @Override
     public Execer getExecer() {
         RedissonClient redisson = RedisClinet.getRedisson();
-        RBucket<Execer> execAll = redisson.getBucket(RedisAutoCompute.getEXECERSTR());
+        RBucket<Execer> execAll = redisson.getBucket(RedisIAutoCompute.getEXECERSTR());
         if (execAll == null) {
             return null;
         }

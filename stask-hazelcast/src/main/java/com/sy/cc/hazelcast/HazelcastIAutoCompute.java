@@ -11,8 +11,8 @@ import com.sy.cc.comm.emuns.AutoCheckTypeEnum;
 import com.sy.cc.comm.emuns.ExecerStatusEnum;
 import com.sy.cc.comm.emuns.MessageTypeEnum;
 import com.sy.cc.comm.entity.*;
-import com.sy.cc.comm.service.AutoCompute;
-import com.sy.cc.comm.service.UdpMulticastService;
+import com.sy.cc.comm.service.IAutoCompute;
+import com.sy.cc.comm.service.IUdpMulticastService;
 import com.sy.cc.comm.util.HttpUrlConnectionClientUtil;
 import com.sy.cc.comm.util.MapUtils;
 import org.slf4j.Logger;
@@ -29,9 +29,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class HazelcastAutoCompute implements AutoCompute {
+public class HazelcastIAutoCompute implements IAutoCompute {
 
-    private static final Logger logger = LoggerFactory.getLogger(HazelcastAutoCompute.class);
+    private static final Logger logger = LoggerFactory.getLogger(HazelcastIAutoCompute.class);
 
     public static  ConcurrentHashMap<String, UserInfo>  getExecAllLoacl(){
         return    execAllLoacl;
@@ -101,21 +101,21 @@ public class HazelcastAutoCompute implements AutoCompute {
 
 
     public static class Hold {
-        private static UdpMulticastService udpMulticastService;
+        private static IUdpMulticastService IUdpMulticastService;
     }
 
 
-    public static UdpMulticastService getUdpMulticastService(){
-        if(Hold.udpMulticastService!=null){
-            return  Hold.udpMulticastService;
+    public static IUdpMulticastService getUdpMulticastService(){
+        if(Hold.IUdpMulticastService !=null){
+            return  Hold.IUdpMulticastService;
         }
-        Hold.udpMulticastService=null;
-        ServiceLoader<UdpMulticastService> autoCompute = ServiceLoader.load(UdpMulticastService.class);
-        for (UdpMulticastService dao : autoCompute) {
-            Hold.udpMulticastService=dao;
+        Hold.IUdpMulticastService =null;
+        ServiceLoader<IUdpMulticastService> autoCompute = ServiceLoader.load(IUdpMulticastService.class);
+        for (IUdpMulticastService dao : autoCompute) {
+            Hold.IUdpMulticastService =dao;
         }
 
-        return  Hold.udpMulticastService;
+        return  Hold.IUdpMulticastService;
     }
     public static void clear() {
 
@@ -496,10 +496,10 @@ public class HazelcastAutoCompute implements AutoCompute {
     public  void checkHost(UserInfo userInfo) {
         logger.info("开始检查是否超时！");
 
-      //  HazelcastInstance INSTANCE = HazelcastAutoCompute.getINSTANCE();
+      //  HazelcastInstance INSTANCE = HazelcastIAutoCompute.getINSTANCE();
 
-        Map<String, Execer> mapScheduled = HazelcastAutoCompute.getEXECMAP();
-        Map<String, String> mapMaster = HazelcastAutoCompute.getMASTER();
+        Map<String, Execer> mapScheduled = HazelcastIAutoCompute.getEXECMAP();
+        Map<String, String> mapMaster = HazelcastIAutoCompute.getMASTER();
 
         if (MapUtils.nonNull(mapScheduled)) {
             Execer execAll = mapScheduled.get(AutoCheckConfig.getEXECALL());
@@ -520,7 +520,7 @@ public class HazelcastAutoCompute implements AutoCompute {
 
             // Map<String, Long> execers = execAll.getExecers();
             //  Map<String, Long> newExecers = new HashMap<>();
-            ConcurrentHashMap<String, UserInfo> execAllLoacl = HazelcastAutoCompute.getExecAllLoacl();
+            ConcurrentHashMap<String, UserInfo> execAllLoacl = HazelcastIAutoCompute.getExecAllLoacl();
             if (MapUtils.nonNull(execAllLoacl)) {
 
                 List<String> collect = execAllLoacl.entrySet().stream().map(m -> m.getKey()).collect(Collectors.toList());
@@ -529,7 +529,7 @@ public class HazelcastAutoCompute implements AutoCompute {
                     present = mapMaster.entrySet().stream().filter(m -> !collect.contains(m.getValue())).findFirst().isPresent();
                 }
                 logger.info(present + "当前master:" + JSONObject.toJSONString(mapMaster));
-                // if (INSTANCE.getCPSubsystem().getLock(HazelcastAutoCompute.getMASTERSTR()).tryLock(7000, TimeUnit.MILLISECONDS)) {
+                // if (INSTANCE.getCPSubsystem().getLock(HazelcastIAutoCompute.getMASTERSTR()).tryLock(7000, TimeUnit.MILLISECONDS)) {
                 if (present) {
                     logger.info("master:" + JSONObject.toJSONString(mapMaster) + "超时！清除！");
                     //master  已经不在执行组内需要清除
@@ -627,7 +627,7 @@ public class HazelcastAutoCompute implements AutoCompute {
                 execAll.setExecers(execAllLoacl);
                 mapScheduled.put(AutoCheckConfig.getEXECALL(), execAll);
 
-                //  INSTANCE.getCPSubsystem().getLock(HazelcastAutoCompute.getMASTERSTR()).unlock();
+                //  INSTANCE.getCPSubsystem().getLock(HazelcastIAutoCompute.getMASTERSTR()).unlock();
             }
             //  }
 
@@ -637,7 +637,7 @@ public class HazelcastAutoCompute implements AutoCompute {
 
     private static void remoteHost(Map<String, String> mapMaster, Execer execAll, Map.Entry<String, UserInfo> host) {
         //有超时的 变动
-        HazelcastAutoCompute.getExecAllLoacl().remove(host.getKey());
+        HazelcastIAutoCompute.getExecAllLoacl().remove(host.getKey());
         execAll.setStatus(ExecerStatusEnum.CHANGE.getCode());
         if (MapUtils.nonNull(mapMaster)) {
             String master = mapMaster.get(getMASTER());

@@ -22,7 +22,7 @@ public class HazelcastClient {
 
     public static HazelcastInstance getHazelcastInstance() {
 
-        ClientConfig clientConfig = ConfigProviderImpl.locateAndGetClientConfig();
+        ClientConfig clientConfig = IConfigProviderImpl.locateAndGetClientConfig();
 
         clientConfig.setInstanceName("Schedled" + UUID.randomUUID());
         HazelcastInstance instance = com.hazelcast.client.HazelcastClient.newHazelcastClient(clientConfig);
